@@ -17,8 +17,10 @@ button.act,.pri{background:var(--ac);color:#fff;border-color:var(--ac)}
 .box{background:var(--card);border:1px solid var(--ln);border-radius:14px;padding:14px}
 .drop{border:2px dashed var(--ln);text-align:center;padding:22px}
 ul{margin:6px 0 0;padding-left:20px}li{margin:3px 0}
-#gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
-.card{padding:6px;text-align:center;cursor:pointer}.card canvas,.card img{width:100%;height:auto;display:block;border-radius:8px;border:1px solid var(--ln);background:#fff}
+#gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}
+.card{padding:8px;text-align:center;cursor:pointer;transition:transform 0.15s ease, border-color 0.15s ease}
+.card:hover{transform:translateY(-2px);border-color:var(--ac)}
+.card canvas,.card img{width:100%;height:auto;display:block;border-radius:8px;border:1px solid var(--ln);background:#fff}
 #pvbox{background:#fff;border:1px solid var(--ln);border-radius:10px;padding:6px}
 #pvbox canvas{display:block;max-width:100%;max-height:52vh;width:auto;height:auto;margin:auto}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
@@ -31,26 +33,19 @@ label{display:flex;gap:8px;align-items:center}input[type=range]{flex:1;min-width
 .sw{width:30px;height:30px;border-radius:50%;padding:0;border:2px solid var(--ln)}.sw.act{outline:3px solid var(--ink);outline-offset:1px}
 input[type=color]{width:34px;height:34px;padding:0;border:0;background:none;flex:none}
 .tabs{display:flex;gap:6px;margin-bottom:12px}
-.tabs button{flex:1;text-align:center;padding:6px 8px;font-size:13px}
+.tabs button{flex:1;text-align:center;padding:8px 10px;font-size:13px;font-weight:bold}
 </style></head><body>
 
 <div id="home" class="scr on">
  <div class="w"><h1>Chill Doodles</h1><p class="mut">Coloreá ilustraciones y doodles: relleno, pincel, zoom y exportar PNG.</p></div>
  <div class="w box drop">
-  <h2>Subí tu propia imagen</h2>
-  <button class="pri" onclick="$('#file').click()">📁 Elegir imagen</button>
+  <h2>Subí tu propia imagen o plantilla</h2>
+  <button class="pri" onclick="$('#file').click()">📁 Elegir archivo (PNG / JPG)</button>
   <input id="file" type="file" accept="image/png,image/jpeg,image/webp" hidden>
-  <p class="mut" style="margin-top:8px">o arrastrala a esta ventana. Se procesa en tu dispositivo: no se sube a ningún servidor.</p>
+  <p class="mut" style="margin-top:8px">o arrastrala a esta ventana. Se procesa localmente en tu navegador.</p>
  </div>
- <details class="w box"><summary><b>¿Qué imagen puedo subir?</b></summary>
-  <ul>
-   <li><b>Formatos:</b> JPG, PNG o WebP, hasta 20 MB. Se reduce a 1800 px de lado largo.</li>
-   <li><b>Lo ideal:</b> dibujo de línea negra sobre fondo blanco, con líneas cerradas y de al menos 2–3 px de grosor.</li>
-   <li><b>Evitá:</b> imágenes borrosas, líneas muy finas o abiertas (el color “se escapa” a las zonas vecinas).</li>
-   <li><b>Derechos:</b> usá solo imágenes tuyas, de dominio público o con licencia libre.</li>
-  </ul></details>
  <div class="w">
-  <div class="row" style="justify-content:space-between;margin-bottom:8px"><h2>Plantillas para colorear</h2></div>
+  <div class="row" style="justify-content:space-between;margin-bottom:8px"><h2>Plantillas integradas</h2></div>
   <div class="tabs">
    <button class="tab-btn act" onclick="filterCat('all',this)">Todas</button>
    <button class="tab-btn" onclick="filterCat('mandalas',this)">🕉️ Mandalas</button>
@@ -88,108 +83,166 @@ const show=id=>document.querySelectorAll('.scr').forEach(s=>s.classList.toggle('
 let SRC,mask,T={x:0,y:0,s:1},tool='fill',col='#ff5a5f',undo=[],redo=[],shown=true,drag=null;
 const C=mk(1,1),L=mk(1,1),cx=C.getContext('2d',{willReadFrequently:true}),stage=$('#stage'),vp=$('#vp');L.id='L';stage.append(C,L);
 
-/* ---------- dibujadores de plantillas vectoriales fijas ---------- */
 const F='#fff',K='#000',PI=Math.PI;
 
-function drawMandala(g, W, H) {
-  g.fillStyle=F;g.fillRect(0,0,W,H);g.strokeStyle=K;g.lineWidth=4;g.lineCap='round';
-  const cx=W/2, cy=H/2;
-  for(let r=80; r<=360; r+=70) {
-    g.beginPath(); g.arc(cx,cy,r,0,PI*2); g.stroke();
+/* Primitivas de dibujado denso estilo doodle (rotulador/microfibra) */
+const rng=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+
+function drawMandalaComplex(g, W, H) {
+  g.fillStyle=F;g.fillRect(0,0,W,H);g.strokeStyle=K;g.lineWidth=4;g.lineCap='round';g.lineJoin='round';
+  const cx=W/2, cy=H/2, R=rng(101);
+  // Capas concéntricas avanzadas
+  const rings = [40, 90, 150, 220, 300, 380, 460];
+  rings.forEach(r => { g.beginPath(); g.arc(cx,cy,r,0,PI*2); g.stroke(); });
+  
+  // Roseta central
+  for(let i=0;i<8;i++){
+    g.save(); g.translate(cx,cy); g.rotate(i*PI/4);
+    g.beginPath(); g.moveTo(0,-40); g.quadraticCurveTo(25,-65,0,-90); g.quadraticCurveTo(-25,-65,0,-40); g.stroke();
+    g.beginPath(); g.arc(0,-65,6,0,PI*2); g.stroke();
+    g.restore();
   }
-  const petals = 12;
-  for(let i=0; i<petals; i++) {
-    const a = (i/petals)*PI*2;
-    g.save(); g.translate(cx,cy); g.rotate(a);
-    g.beginPath(); g.moveTo(0,-80); g.quadraticCurveTo(40,-180,0,-280); g.quadraticCurveTo(-40,-180,0,-80); g.stroke();
-    g.beginPath(); g.arc(0,-180,18,0,PI*2); g.stroke();
-    g.beginPath(); g.moveTo(0,-280); g.quadraticCurveTo(60,-320,0,-360); g.quadraticCurveTo(-60,-320,0,-280); g.stroke();
+  // Capa de pétalos medianos
+  for(let i=0;i<16;i++){
+    g.save(); g.translate(cx,cy); g.rotate(i*PI/8);
+    g.beginPath(); g.moveTo(0,-90); g.quadraticCurveTo(30,-120,0,-150); g.quadraticCurveTo(-30,-120,0,-90); g.stroke();
+    for(let d=105;d<=135;d+=10){ g.beginPath(); g.arc(0,-d,4,0,PI*2); g.stroke(); }
+    g.restore();
+  }
+  // Capa exterior detallada
+  for(let i=0;i<24;i++){
+    g.save(); g.translate(cx,cy); g.rotate(i*PI/12);
+    g.beginPath(); g.moveTo(0,-150); g.quadraticCurveTo(35,-185,0,-220); g.quadraticCurveTo(-35,-185,0,-150); g.stroke();
+    g.beginPath(); g.moveTo(0,-220); g.quadraticCurveTo(45,-260,0,-300); g.quadraticCurveTo(-45,-260,0,-220); g.stroke();
+    g.beginPath(); g.arc(0,-260,10,0,PI*2); g.stroke();
     g.restore();
   }
 }
 
-function drawAnimal(g, W, H) {
-  g.fillStyle=F;g.fillRect(0,0,W,H);g.strokeStyle=K;g.lineWidth=5;g.lineCap=g.lineJoin='round';
-  const cx=W/2, cy=H/2-20;
-  // Orejas
-  g.beginPath(); g.moveTo(cx-180,cy-100); g.lineTo(cx-140,cy-260); g.lineTo(cx-40,cy-160); g.closePath(); g.stroke();
-  g.beginPath(); g.moveTo(cx+180,cy-100); g.lineTo(cx+140,cy-260); g.lineTo(cx+40,cy-160); g.closePath(); g.stroke();
-  // Cabeza
-  g.beginPath(); g.ellipse(cx, cy, 200, 180, 0, 0, PI*2); g.stroke();
-  // Ojos
-  g.beginPath(); g.ellipse(cx-80, cy-40, 35, 45, 0, 0, PI*2); g.stroke();
-  g.beginPath(); g.ellipse(cx+80, cy-40, 35, 45, 0, 0, PI*2); g.stroke();
-  g.beginPath(); g.arc(cx-70, cy-40, 12, 0, PI*2); g.fillStyle=K; g.fill();
-  g.beginPath(); g.arc(cx+90, cy-40, 12, 0, PI*2); g.fill();
-  // Hocico / Nariz
-  g.beginPath(); g.moveTo(cx-25, cy+30); g.lineTo(cx+25, cy+30); g.lineTo(cx, cy+55); g.closePath(); g.stroke();
-  g.beginPath(); g.arc(cx-20, cy+75, 20, PI*1.2, PI*0.2, true); g.stroke();
-  g.beginPath(); g.arc(cx+20, cy+75, 20, PI*0.8, PI*-0.2); g.stroke();
-  // Bigotes
-  for(let i of [-1,1]){
-    g.beginPath(); g.moveTo(cx+i*110, cy+50); g.lineTo(cx+i*260, cy+30); g.stroke();
-    g.beginPath(); g.moveTo(cx+i*110, cy+70); g.lineTo(cx+i*270, cy+80); g.stroke();
+function drawDenseDoodle(g, W, H, seed, theme) {
+  g.fillStyle=F;g.fillRect(0,0,W,H);g.strokeStyle=K;g.lineWidth=4.5;g.lineCap='round';g.lineJoin='round';
+  const R=rng(seed);
+  
+  // Generación de fondo lleno de mini-elementos (estrellas, burbujas, flores, gemas)
+  for(let x=30; x<W; x+=45){
+    for(let y=30; y<H; y+=45){
+      if(R() < 0.65){
+        const r=6+R()*10, type=Math.floor(R()*5);
+        g.save(); g.translate(x+(R()-0.5)*20, y+(R()-0.5)*20);
+        if(type===0){ g.beginPath(); g.arc(0,0,r,0,PI*2); g.stroke(); }
+        else if(type===1){
+          g.beginPath(); for(let k=0;k<5;k++){ const a=k*PI*2/5-PI/2; g.lineTo(Math.cos(a)*r, Math.sin(a)*r); } g.closePath(); g.stroke();
+        } else if(type===2){
+          g.strokeRect(-r/2,-r/2,r,r);
+        } else {
+          g.beginPath(); g.moveTo(-r,0); g.lineTo(r,0); g.moveTo(0,-r); g.lineTo(0,r); g.stroke();
+        }
+        g.restore();
+      }
+    }
   }
-}
 
-function drawMonstruo(g, W, H) {
-  g.fillStyle=F;g.fillRect(0,0,W,H);g.strokeStyle=K;g.lineWidth=6;g.lineCap=g.lineJoin='round';
-  const cx=W/2, cy=H/2+40;
-  // Cuerpo principal
-  g.beginPath();
-  g.moveTo(cx-160, cy+200);
-  g.quadraticCurveTo(cx-220, cy-200, cx, cy-240);
-  g.quadraticCurveTo(cx+220, cy-200, cx+160, cy+200);
-  g.closePath(); g.stroke();
-  // Cuernos
-  g.beginPath(); g.moveTo(cx-80, cy-230); g.quadraticCurveTo(cx-140, cy-330, cx-60, cy-310); g.quadraticCurveTo(cx-50, cy-250, cx-40, cy-235); g.stroke();
-  g.beginPath(); g.moveTo(cx+80, cy-230); g.quadraticCurveTo(cx+140, cy-330, cx+60, cy-310); g.quadraticCurveTo(cx+50, cy-250, cx+40, cy-235); g.stroke();
-  // Ojo central grande
-  g.beginPath(); g.arc(cx, cy-80, 55, 0, PI*2); g.stroke();
-  g.beginPath(); g.arc(cx, cy-80, 22, 0, PI*2); g.fillStyle=K; g.fill();
-  // Boca con dientes
-  g.beginPath(); g.arc(cx, cy+40, 80, 0.1, PI-0.1); g.closePath(); g.stroke();
-  for(let x=-50; x<=50; x+=25){
-    g.beginPath(); g.moveTo(cx+x, cy+40); g.lineTo(cx+x+10, cy+65); g.lineTo(cx+x+20, cy+40); g.stroke();
+  // Colección de personajes/elementos densos apilados
+  const items = [];
+  const cols = 5, rows = 6;
+  const stepX = (W - 80) / cols, stepY = (H - 80) / rows;
+
+  for(let i=0; i<cols; i++){
+    for(let j=0; j<rows; j++){
+      const x = 50 + i * stepX + stepX/2 + (R()-0.5)*25;
+      const y = 50 + j * stepY + stepY/2 + (R()-0.5)*25;
+      const size = 45 + R()*25;
+      items.push({x, y, size, type: Math.floor(R()*6)});
+    }
   }
-}
 
-function drawFiguras(g, W, H) {
-  g.fillStyle=F;g.fillRect(0,0,W,H);g.strokeStyle=K;g.lineWidth=4;g.lineCap=g.lineJoin='round';
-  const cx=W/2, cy=H/2;
-  // Patrón geométrico abstracto
-  for(let i=0; i<8; i++){
-    const a = (i/8)*PI*2;
-    g.save(); g.translate(cx,cy); g.rotate(a);
-    g.strokeRect(-60,-240,120,120);
-    g.beginPath(); g.moveTo(0,-120); g.lineTo(0,0); g.stroke();
-    g.beginPath(); g.arc(0,-180,35,0,PI*2); g.stroke();
+  // Dibujar cada elemento tipo doodle con borde y cara
+  items.forEach(it => {
+    g.save();
+    g.translate(it.x, it.y);
+    g.rotate((R()-0.5)*0.4);
+    
+    // Forma base
+    g.beginPath();
+    if(theme==='animales' || it.type===0){
+      // Cabeza de animal / gatito / osito
+      g.arc(0, 0, it.size, 0, PI*2); g.fillStyle=F; g.fill(); g.stroke();
+      // Orejas
+      g.beginPath(); g.moveTo(-it.size*0.7, -it.size*0.6); g.lineTo(-it.size*0.9, -it.size*1.2); g.lineTo(-it.size*0.2, -it.size*0.9); g.stroke();
+      g.beginPath(); g.moveTo(it.size*0.7, -it.size*0.6); g.lineTo(it.size*0.9, -it.size*1.2); g.lineTo(it.size*0.2, -it.size*0.9); g.stroke();
+      // Ojos y boca kawaii
+      g.beginPath(); g.arc(-it.size*0.35, -it.size*0.1, it.size*0.12, 0, PI*2); g.fillStyle=K; g.fill();
+      g.beginPath(); g.arc(it.size*0.35, -it.size*0.1, it.size*0.12, 0, PI*2); g.fill();
+      g.beginPath(); g.arc(0, it.size*0.2, it.size*0.15, 0, PI); g.stroke();
+    } 
+    else if(theme==='monstruos' || it.type===1){
+      // Monstruito fantasmita o nube
+      g.roundRect(-it.size*0.8, -it.size, it.size*1.6, it.size*2, it.size*0.4);
+      g.fillStyle=F; g.fill(); g.stroke();
+      // Ojo grande central o 3 ojos
+      if(R() > 0.5){
+        g.beginPath(); g.arc(0, -it.size*0.3, it.size*0.35, 0, PI*2); g.stroke();
+        g.beginPath(); g.arc(0, -it.size*0.3, it.size*0.15, 0, PI*2); g.fillStyle=K; g.fill();
+      } else {
+        [-0.4, 0, 0.4].forEach(ox => {
+          g.beginPath(); g.arc(it.size*ox, -it.size*0.3, it.size*0.15, 0, PI*2); g.stroke();
+          g.beginPath(); g.arc(it.size*ox, -it.size*0.3, it.size*0.07, 0, PI*2); g.fillStyle=K; g.fill();
+        });
+      }
+      // Dientes
+      g.beginPath(); g.moveTo(-it.size*0.4, it.size*0.3); g.lineTo(it.size*0.4, it.size*0.3); g.stroke();
+      for(let d=-0.3; d<=0.3; d+=0.2){
+        g.beginPath(); g.moveTo(it.size*d, it.size*0.3); g.lineTo(it.size*(d+0.1), it.size*0.5); g.lineTo(it.size*(d+0.2), it.size*0.3); g.stroke();
+      }
+    } 
+    else if(theme==='figuras' || it.type===2){
+      // Diamante / Hexágono complejo
+      const pts = 6;
+      g.beginPath();
+      for(let k=0; k<pts; k++){
+        const a = k*PI*2/pts;
+        g.lineTo(Math.cos(a)*it.size*1.1, Math.sin(a)*it.size*1.1);
+      }
+      g.closePath(); g.fillStyle=F; g.fill(); g.stroke();
+      for(let k=0; k<pts; k++){
+        const a = k*PI*2/pts;
+        g.beginPath(); g.moveTo(0,0); g.lineTo(Math.cos(a)*it.size*1.1, Math.sin(a)*it.size*1.1); g.stroke();
+      }
+    } 
+    else {
+      // Comida / Helados / Donas doodle
+      g.beginPath(); g.arc(0, 0, it.size*0.9, 0, PI*2); g.fillStyle=F; g.fill(); g.stroke();
+      g.beginPath(); g.arc(0, 0, it.size*0.3, 0, PI*2); g.stroke();
+      for(let k=0; k<8; k++){
+        const a = k*PI/4;
+        g.beginPath(); g.arc(Math.cos(a)*it.size*0.6, Math.sin(a)*it.size*0.6, 3, 0, PI*2); g.fillStyle=K; g.fill();
+      }
+    }
+    
     g.restore();
-  }
-  g.beginPath(); g.arc(cx,cy,90,0,PI*2); g.stroke();
-  g.strokeRect(cx-50,cy-50,100,100);
+  });
 }
 
 const TEMPLATES = [
-  { id:'m1', cat:'mandalas', name:'Mandala Roseta', render: drawMandala },
-  { id:'a1', cat:'animales', name:'Gato Doodle', render: drawAnimal },
-  { id:'s1', cat:'monstruos', name:'Monstruo Cíclope', render: drawMonstruo },
-  { id:'f1', cat:'figuras', name:'Composición Geométrica', render: drawFiguras }
+  { id:'m1', cat:'mandalas', name:'Mandala Tapiz Intincado', render: (g,w,h)=>drawMandalaComplex(g,w,h) },
+  { id:'a1', cat:'animales', name:'Tapiz Doodle Animales', render: (g,w,h)=>drawDenseDoodle(g,w,h, 404, 'animales') },
+  { id:'s1', cat:'monstruos', name:'Mundo Monstruos Doodle', render: (g,w,h)=>drawDenseDoodle(g,w,h, 808, 'monstruos') },
+  { id:'f1', cat:'figuras', name:'Geometría & Cristales', render: (g,w,h)=>drawDenseDoodle(g,w,h, 1212, 'figuras') }
 ];
 
 function buildGallery() {
   const box=$('#gal'); box.innerHTML='';
   TEMPLATES.forEach(t=>{
-    const c=mk(400,500);
-    t.render(c.getContext('2d'), 400, 500);
+    const c=mk(400,520);
+    t.render(c.getContext('2d'), 400, 520);
     const d=document.createElement('div');
     d.className='card';
     d.dataset.cat=t.cat;
     d.append(c);
-    d.insertAdjacentHTML('beforeend','<span>'+t.name+'</span>');
+    d.insertAdjacentHTML('beforeend','<span style="display:block;margin-top:6px;font-weight:bold">'+t.name+'</span>');
     d.onclick=()=>{
-      const full=mk(1200,1500);
-      t.render(full.getContext('2d'), 1200, 1500);
+      const full=mk(1200,1600);
+      t.render(full.getContext('2d'), 1200, 1600);
       L.width=full.width; L.height=full.height;
       L.getContext('2d').drawImage(full,0,0);
       start();
@@ -309,11 +362,9 @@ const c32=h=>((255<<24)|(parseInt(h.slice(5,7),16)<<16)|(parseInt(h.slice(3,5),1
 function doFill(x,y){
   x|=0; y|=0;
   const W=C.width, H=C.height;
-  // Obtener estado actual pintado en C
   const drawnData = cx.getImageData(0,0,W,H).data;
   const isBlocked = (idx) => {
-    if (mask[idx]) return true; // Línea fija original
-    // Si el lienzo C no es blanco puro (r<240 o g<240 o b<240), se considera barrera pintada
+    if (mask[idx]) return true;
     const p = idx * 4;
     return (drawnData[p] < 240 || drawnData[p+1] < 240 || drawnData[p+2] < 240);
   };
