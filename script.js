@@ -3,47 +3,37 @@ const show=id=>document.querySelectorAll('.scr').forEach(s=>s.classList.toggle('
 let SRC,mask,T={x:0,y:0,s:1},tool='fill',col='#ff5a5f',undo=[],redo=[],shown=true,drag=null;
 const C=mk(1,1),L=mk(1,1),cx=C.getContext('2d',{willReadFrequently:true}),stage=$('#stage'),vp=$('#vp');L.id='L';stage.append(C,L);
 
-/* 
-  --- CONFIGURACIÓN AUTOMÁTICA PARA LA WEB PÚBLICA ---
-  Aquí defines las categorías que tienes en tus carpetas y los nombres de las imágenes.
-  Cuando subas una nueva imagen a la carpeta en tu servidor/repo, solo la agregas a esta lista.
-*/
-const CATEGORIES = [
-  {
-    id: 'monstruos',
-    name: '👾 Monstruos',
-    folder: 'mis-doodles/Monstruos',
-    files: ['doodle-1.jpg', 'doodle-2.png'] // Reemplaza con los nombres reales de los archivos que subas
-  },
-  {
-    id: 'mandalas',
-    name: '🕉️ Mandalas',
-    folder: 'mis-doodles/Mandalas',
-    files: ['mandala-1.jpg']
-  }
-];
-
+let globalCategories = [];
 let activeCategory = 'all';
 
-function initGallery() {
-  const tabBox = document.getElementById('tab-container');
-  tabBox.innerHTML = '';
+// Cargar el archivo JSON al iniciar la página
+async function initGallery() {
+  try {
+    const response = await fetch('doodles.json');
+    const data = await response.json();
+    globalCategories = data.categories;
+    
+    const tabBox = document.getElementById('tab-container');
+    tabBox.innerHTML = '';
 
-  const allBtn = document.createElement('button');
-  allBtn.className = 'tab-btn act';
-  allBtn.textContent = 'Todas';
-  allBtn.onclick = () => filterCategory('all', allBtn);
-  tabBox.append(allBtn);
+    const allBtn = document.createElement('button');
+    allBtn.className = 'tab-btn act';
+    allBtn.textContent = 'Todas';
+    allBtn.onclick = () => filterCategory('all', allBtn);
+    tabBox.append(allBtn);
 
-  CATEGORIES.forEach(cat => {
-    const btn = document.createElement('button');
-    btn.className = 'tab-btn';
-    btn.textContent = cat.name;
-    btn.onclick = () => filterCategory(cat.id, btn);
-    tabBox.append(btn);
-  });
+    globalCategories.forEach(cat => {
+      const btn = document.createElement('button');
+      btn.className = 'tab-btn';
+      btn.textContent = cat.name;
+      btn.onclick = () => filterCategory(cat.id, btn);
+      tabBox.append(btn);
+    });
 
-  renderGallery();
+    renderGallery();
+  } catch (error) {
+    document.getElementById('gal').innerHTML = '<p class="mut" style="grid-column:1/-1;text-align:center;padding:20px">No se pudo cargar el archivo doodles.json. Verificá que exista en la raíz.</p>';
+  }
 }
 
 function filterCategory(catId, btn) {
@@ -57,19 +47,20 @@ function renderGallery() {
   const box = document.getElementById('gal');
   box.innerHTML = '';
 
-  CATEGORIES.forEach(cat => {
+  globalCategories.forEach(cat => {
     if (activeCategory !== 'all' && activeCategory !== cat.id) return;
 
-    cat.files.forEach(file => {
-      const src = `${cat.folder}/${file}`;
+    // Genera automáticamente del 1 hasta el 'count' definido en el JSON
+    for (let i = 1; i <= cat.count; i++) {
+      // Intenta primero con .jpg, si falla o querés soportar extensiones podés ajustarlo
+      const src = `${cat.folder}/${i}.jpg`;
       const d = document.createElement('div');
       d.className = 'card';
-      d.innerHTML = `<img src="${src}" alt="${file}" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'200\\' height=\\'220\\'><rect width=\\'100%\\' height=\\'100%\\' fill=\\'%23eee\\'/><text x=\\'50%\\' y=\\'50%\\' font-family=\\'sans-serif\\' font-size=\\'12\\' fill=\\'%23888\\' text-anchor=\\'middle\\'>Falta ${file}</text></svg>';">
-                     <span style="display:block;margin-top:6px;font-size:13px;font-weight:bold">${file.replace(/\.[^/.]+$/, "")}</span>
-                     <span class="mut">${cat.name}</span>`;
+      d.innerHTML = `<img src="${src}" alt="${cat.name} ${i}" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'200\\' height=\\'220\\'><rect width=\\'100%\\' height=\\'100%\\' fill=\\'%23eee\\'/><text x=\\'50%\\' y=\\'50%\\' font-family=\\'sans-serif\\' font-size=\\'12\\' fill=\\'%23888\\' text-anchor=\\'middle\\'>Falta ${i}.jpg</text></svg>';">
+                     <span style="display:block;margin-top:6px;font-size:13px;font-weight:bold">${cat.name} #${i}</span>`;
       d.onclick = () => load(src);
       box.append(d);
-    });
+    }
   });
 }
 
@@ -83,7 +74,7 @@ function load(src){
     x.drawImage(im,0,0,SRC.width,SRC.height);
     prep();
   };
-  im.onerror=()=>alert('No se pudo cargar la imagen desde la ruta: ' + src);
+  im.onerror=()=>alert('No se pudo cargar la imagen: ' + src);
   im.src=src;
 }
 
@@ -245,7 +236,7 @@ vp.onwheel=e=>{
   apply();
 };
 
-document.querySelectorAll('[data-t]').forEach(b=>b.onclick=selector => {
+document.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{
   tool=b.dataset.t;
   document.querySelectorAll('[data-t]').forEach(x=>x.classList.toggle('act',x==b));
 });
@@ -275,5 +266,5 @@ PAL.forEach(c=>{
 });
 document.getElementById('cc').oninput=e=>setCol(e.target.value,null);
 
-// Inicializar galería automática al abrir la página
+// Iniciar aplicación cargando el JSON
 initGallery();
