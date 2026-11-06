@@ -3,97 +3,31 @@ const show=id=>document.querySelectorAll('.scr').forEach(s=>s.classList.toggle('
 let SRC,mask,T={x:0,y:0,s:1},tool='fill',col='#ff5a5f',undo=[],redo=[],shown=true,drag=null;
 const C=mk(1,1),L=mk(1,1),cx=C.getContext('2d',{willReadFrequently:true}),stage=$('#stage'),vp=$('#vp');L.id='L';stage.append(C,L);
 
-let loadedCategories = {};
+/* 
+  --- CONFIGURACIÓN AUTOMÁTICA PARA LA WEB PÚBLICA ---
+  Aquí defines las categorías que tienes en tus carpetas y los nombres de las imágenes.
+  Cuando subas una nueva imagen a la carpeta en tu servidor/repo, solo la agregas a esta lista.
+*/
+const CATEGORIES = [
+  {
+    id: 'monstruos',
+    name: '👾 Monstruos',
+    folder: 'mis-doodles/Monstruos',
+    files: ['doodle-1.jpg', 'doodle-2.png'] // Reemplaza con los nombres reales de los archivos que subas
+  },
+  {
+    id: 'mandalas',
+    name: '🕉️ Mandalas',
+    folder: 'mis-doodles/Mandalas',
+    files: ['mandala-1.jpg']
+  }
+];
+
 let activeCategory = 'all';
 
-document.getElementById('folder').onchange = e => handleFiles(e.target.files);
-
-const dropArea = document.getElementById('drop-area');
-dropArea.ondragover = e => { e.preventDefault(); dropArea.classList.add('drag'); };
-dropArea.ondragleave = () => dropArea.classList.remove('drag');
-dropArea.ondrop = e => {
-  e.preventDefault();
-  dropArea.classList.remove('drag');
-  if (e.dataTransfer.items) {
-    const queue = [];
-    for (let i = 0; i < e.dataTransfer.items.length; i++) {
-      const entry = e.dataTransfer.items[i].webkitGetAsEntry();
-      if (entry) queue.push(entry);
-    }
-    processEntries(queue);
-  } else {
-    handleFiles(e.dataTransfer.files);
-  }
-};
-
-function processEntries(queue) {
-  function readEntry(entry) {
-    if (entry.isFile) {
-      return new Promise(resolve => {
-        entry.file(file => {
-          file.fullPath = entry.fullPath;
-          resolve(file);
-        });
-      });
-    } else if (entry.isDirectory) {
-      const reader = entry.createReader();
-      return new Promise(resolve => {
-        reader.readEntries(entries => {
-          Promise.all(entries.map(e => readEntry(e))).then(res => {
-            resolve(res.flat());
-          });
-        });
-      });
-    }
-    return Promise.resolve([]);
-  }
-
-  Promise.all(queue.map(e => readEntry(e))).then(results => {
-    handleFiles(results.flat());
-  });
-}
-
-function handleFiles(files) {
-  loadedCategories = {};
-  const imageRegex = /\.(png|jpe?g|webp)$/i;
-
-  Array.from(files).forEach(file => {
-    if (!imageRegex.test(file.name)) return;
-
-    const path = file.webkitRelativePath || file.fullPath || file.name;
-    const parts = path.split('/').filter(p => p);
-    
-    let categoryName = 'General';
-    if (parts.length > 2) {
-      categoryName = parts[parts.length - 2];
-    } else if (parts.length === 2) {
-      categoryName = parts[0];
-    }
-
-    if (!loadedCategories[categoryName]) {
-      loadedCategories[categoryName] = [];
-    }
-
-    loadedCategories[categoryName].push({
-      name: file.name.replace(imageRegex, ''),
-      file: file,
-      url: URL.createObjectURL(file)
-    });
-  });
-
-  renderCategoryTabs();
-  renderGallery();
-}
-
-function renderCategoryTabs() {
+function initGallery() {
   const tabBox = document.getElementById('tab-container');
   tabBox.innerHTML = '';
-
-  const catNames = Object.keys(loadedCategories);
-  if (catNames.length === 0) {
-    boxEmpty();
-    return;
-  }
 
   const allBtn = document.createElement('button');
   allBtn.className = 'tab-btn act';
@@ -101,17 +35,19 @@ function renderCategoryTabs() {
   allBtn.onclick = () => filterCategory('all', allBtn);
   tabBox.append(allBtn);
 
-  catNames.forEach(cat => {
+  CATEGORIES.forEach(cat => {
     const btn = document.createElement('button');
     btn.className = 'tab-btn';
-    btn.textContent = cat;
-    btn.onclick = () => filterCategory(cat, btn);
+    btn.textContent = cat.name;
+    btn.onclick = () => filterCategory(cat.id, btn);
     tabBox.append(btn);
   });
+
+  renderGallery();
 }
 
-function filterCategory(cat, btn) {
-  activeCategory = cat;
+function filterCategory(catId, btn) {
+  activeCategory = catId;
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('act'));
   if (btn) btn.classList.add('act');
   renderGallery();
@@ -121,29 +57,20 @@ function renderGallery() {
   const box = document.getElementById('gal');
   box.innerHTML = '';
 
-  const catNames = Object.keys(loadedCategories);
-  if (catNames.length === 0) {
-    boxEmpty();
-    return;
-  }
+  CATEGORIES.forEach(cat => {
+    if (activeCategory !== 'all' && activeCategory !== cat.id) return;
 
-  catNames.forEach(cat => {
-    if (activeCategory !== 'all' && activeCategory !== cat) return;
-
-    loadedCategories[cat].forEach(item => {
+    cat.files.forEach(file => {
+      const src = `${cat.folder}/${file}`;
       const d = document.createElement('div');
       d.className = 'card';
-      d.innerHTML = `<img src="${item.url}" alt="${item.name}">
-                     <span style="display:block;margin-top:6px;font-size:13px;font-weight:bold">${item.name}</span>
-                     <span class="mut">${cat}</span>`;
-      d.onclick = () => load(item.url);
+      d.innerHTML = `<img src="${src}" alt="${file}" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'200\\' height=\\'220\\'><rect width=\\'100%\\' height=\\'100%\\' fill=\\'%23eee\\'/><text x=\\'50%\\' y=\\'50%\\' font-family=\\'sans-serif\\' font-size=\\'12\\' fill=\\'%23888\\' text-anchor=\\'middle\\'>Falta ${file}</text></svg>';">
+                     <span style="display:block;margin-top:6px;font-size:13px;font-weight:bold">${file.replace(/\.[^/.]+$/, "")}</span>
+                     <span class="mut">${cat.name}</span>`;
+      d.onclick = () => load(src);
       box.append(d);
     });
   });
-}
-
-function boxEmpty() {
-  document.getElementById('gal').innerHTML = '<p class="mut" style="grid-column:1/-1;text-align:center;padding:20px">Seleccioná tu carpeta raíz (por ejemplo, mis-doodles) para ver las categorías y dibujos.</p>';
 }
 
 function load(src){
@@ -156,7 +83,7 @@ function load(src){
     x.drawImage(im,0,0,SRC.width,SRC.height);
     prep();
   };
-  im.onerror=()=>alert('No se pudo abrir la imagen seleccionada.');
+  im.onerror=()=>alert('No se pudo cargar la imagen desde la ruta: ' + src);
   im.src=src;
 }
 
@@ -318,7 +245,7 @@ vp.onwheel=e=>{
   apply();
 };
 
-document.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{
+document.querySelectorAll('[data-t]').forEach(b=>b.onclick=selector => {
   tool=b.dataset.t;
   document.querySelectorAll('[data-t]').forEach(x=>x.classList.toggle('act',x==b));
 });
@@ -348,4 +275,5 @@ PAL.forEach(c=>{
 });
 document.getElementById('cc').oninput=e=>setCol(e.target.value,null);
 
-boxEmpty();
+// Inicializar galería automática al abrir la página
+initGallery();
