@@ -6,9 +6,9 @@ const C=mk(1,1),L=mk(1,1),cx=C.getContext('2d',{willReadFrequently:true}),stage=
 let loadedCategories = {};
 let activeCategory = 'all';
 
-$('#folder').onchange = e => handleFiles(e.target.files);
+document.getElementById('folder').onchange = e => handleFiles(e.target.files);
 
-const dropArea = $('#drop-area');
+const dropArea = document.getElementById('drop-area');
 dropArea.ondragover = e => { e.preventDefault(); dropArea.classList.add('drag'); };
 dropArea.ondragleave = () => dropArea.classList.remove('drag');
 dropArea.ondrop = e => {
@@ -86,7 +86,7 @@ function handleFiles(files) {
 }
 
 function renderCategoryTabs() {
-  const tabBox = $('#tab-container');
+  const tabBox = document.getElementById('tab-container');
   tabBox.innerHTML = '';
 
   const catNames = Object.keys(loadedCategories);
@@ -118,7 +118,7 @@ function filterCategory(cat, btn) {
 }
 
 function renderGallery() {
-  const box = $('#gal');
+  const box = document.getElementById('gal');
   box.innerHTML = '';
 
   const catNames = Object.keys(loadedCategories);
@@ -143,7 +143,7 @@ function renderGallery() {
 }
 
 function boxEmpty() {
-  $('#gal').innerHTML = '<p class="mut" style="grid-column:1/-1;text-align:center;padding:20px">No se encontraron carpetas cargadas. Elegí o arrastrá una carpeta arriba para empezar.</p>';
+  document.getElementById('gal').innerHTML = '<p class="mut" style="grid-column:1/-1;text-align:center;padding:20px">Seleccioná tu carpeta raíz (por ejemplo, mis-doodles) para ver las categorías y dibujos.</p>';
 }
 
 function load(src){
@@ -160,8 +160,8 @@ function load(src){
   im.src=src;
 }
 
-$('#file-single').onchange=e=>{
-  const f=e.target.files[0];
+document.getElementById('file-single').onchange = e => {
+  const f = e.target.files[0];
   if(f){
     if(f.size>20e6) alert('La imagen pesa más de 20 MB.');
     else load(URL.createObjectURL(f));
@@ -170,18 +170,18 @@ $('#file-single').onchange=e=>{
 };
 
 function prep(){
-  show('prep'); $('#pvbox').append(L);
+  show('prep'); document.getElementById('pvbox').appendChild(L);
   proc();
 }
 
-$('#th').oninput=()=>{ proc(); };
+document.getElementById('th').oninput = () => { proc(); };
 
 function proc(){
   const W=SRC.width, H=SRC.height, n=W*H;
   const s=SRC.getContext('2d').getImageData(0,0,W,H).data;
   const gr=new Float32Array(n);
   for(let i=0;i<n;i++) gr[i]=.299*s[i*4]+.587*s[i*4+1]+.114*s[i*4+2];
-  const t=+$('#th').value;
+  const t=+document.getElementById('th').value;
   L.width=W; L.height=H;
   const o=L.getContext('2d'), im=o.createImageData(W,H), d=im.data;
   for(let i=0;i<n;i++){
@@ -196,7 +196,7 @@ function start(){
   C.width=W; C.height=H;
   cx.fillStyle='#fff'; cx.fillRect(0,0,W,H);
   stage.style.width=W+'px'; stage.style.height=H+'px';
-  stage.append(L);
+  stage.appendChild(L);
   shown=true; L.style.visibility='';
   const d=L.getContext('2d').getImageData(0,0,W,H).data;
   mask=new Uint8Array(W*H);
@@ -272,7 +272,7 @@ function doFill(x,y){
 
 function stroke(a,b){
   cx.lineCap=cx.lineJoin='round';
-  cx.lineWidth=+$('#sz').value;
+  cx.lineWidth=+document.getElementById('sz').value;
   cx.strokeStyle=tool=='erase'?'#fff':col;
   cx.beginPath(); cx.moveTo(a[0],a[1]); cx.lineTo(b[0]+.01,b[1]); cx.stroke();
 }
@@ -323,12 +323,12 @@ document.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('[data-t]').forEach(x=>x.classList.toggle('act',x==b));
 });
 
-$('#bu').onclick=()=>swap(undo,redo);
-$('#br').onclick=()=>swap(redo,undo);
-$('#bf').onclick=fit;
-$('#bl').onclick=()=>{ shown=!shown; L.style.visibility=shown?'':'hidden'; };
-$('#bh').onclick=()=>{ if(confirm('¿Volver al inicio? Se perderá lo pintado.')) show('home'); };
-$('#bx').onclick=()=>{
+document.getElementById('bh').onclick=()=>{ if(confirm('¿Volver al inicio? Se perderá lo pintado.')) show('home'); };
+document.getElementById('bu').onclick=()=>swap(undo,redo);
+document.getElementById('br').onclick=()=>swap(redo,undo);
+document.getElementById('bf').onclick=fit;
+document.getElementById('bl').onclick=()=>{ shown=!shown; L.style.visibility=shown?'':'hidden'; };
+document.getElementById('bx').onclick=()=>{
   const t=mk(C.width,C.height), x=t.getContext('2d');
   x.drawImage(C,0,0);
   if(shown){ x.globalCompositeOperation='multiply'; x.drawImage(L,0,0); }
@@ -343,9 +343,9 @@ function setCol(c,el){ col=c; document.querySelectorAll('.sw').forEach(x=>x.clas
 PAL.forEach(c=>{
   const b=document.createElement('button');
   b.className='sw'; b.style.background=c;
-  b.onclick=()=>{ setCol(c,b); $('#cc').value=c; };
-  $('#pal').append(b);
+  b.onclick=()=>{ setCol(c,b); document.getElementById('cc').value=c; };
+  document.getElementById('pal').appendChild(b);
 });
-$('#cc').oninput=e=>setCol(e.target.value,null);
+document.getElementById('cc').oninput=e=>setCol(e.target.value,null);
 
 boxEmpty();
